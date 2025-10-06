@@ -14,7 +14,7 @@ A collaborative drawing assistant powered by Google Gemini, built with React and
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) 18 or later
-- A Google Gemini API key
+- An [OpenRouter](https://openrouter.ai) account and API key
 
 ### Installation
 
@@ -24,10 +24,10 @@ npm install
 
 ### Environment Variables
 
-Create a `.env.local` file at the project root with your Gemini API key:
+Create a `.env.local` file at the project root with your OpenRouter API key:
 
 ```bash
-GEMINI_API_KEY=your_api_key_here
+VITE_OPENROUTER_API_KEY=your_api_key_here
 ```
 
 ### Local Development
@@ -66,7 +66,7 @@ You can deploy directly from the Vercel dashboard or via the CLI.
    - **Framework Preset:** `Vite`
    - **Build Command:** `npm run build`
    - **Output Directory:** `dist`
-4. Add an environment variable named `GEMINI_API_KEY` with your key.
+4. Add an environment variable named `VITE_OPENROUTER_API_KEY` with your key.
 5. Click **Deploy**. Vercel will build and deploy your app automatically.
 
 ### Option 2: Vercel CLI
@@ -83,7 +83,7 @@ You can deploy directly from the Vercel dashboard or via the CLI.
 3. During the `vercel` command, accept the detected Vite configuration, set the build command to `npm run build`, and the output directory to `dist`.
 4. Add the environment variable:
    ```bash
-   vercel env add GEMINI_API_KEY
+   vercel env add VITE_OPENROUTER_API_KEY
    ```
 5. Deploy:
    ```bash
@@ -105,7 +105,7 @@ Vercel will handle future deployments automatically when you push to the connect
 
 ## Troubleshooting
 
-- Ensure `GEMINI_API_KEY` is set in both local `.env.local` and Vercel project settings.
+- Ensure `VITE_OPENROUTER_API_KEY` is set in both local `.env.local` and Vercel project settings.
 - If the dev server fails to start, delete `node_modules` and reinstall dependencies with `npm install`.
 - For additional Vite configuration options, see the [Vite documentation](https://vitejs.dev/).
 
