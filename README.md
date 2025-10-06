@@ -1,6 +1,6 @@
 # Co-Drawing App
 
-A collaborative drawing assistant powered by OpenRouter's Gemini models, built with React and Vite. The app lets you describe an illustration idea in natural language and iteratively refine the artwork with AI-generated guidance.
+A collaborative drawing assistant powered by Google Gemini, built with React and Vite. The app lets you describe an illustration idea in natural language and iteratively refine the artwork with AI-generated guidance.
 
 ## Features
 
