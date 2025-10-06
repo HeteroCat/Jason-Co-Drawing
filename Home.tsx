@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
 */
 /* tslint:disable */
-import {GoogleGenAI, Modality} from '@google/genai';
 import {
   ChevronDown,
   Download,
@@ -14,19 +13,33 @@ import {
 } from 'lucide-react';
 import {useEffect, useRef, useState} from 'react';
 
-const ai = new GoogleGenAI({apiKey: process.env.API_KEY});
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/responses';
+const OPENROUTER_MODEL = 'google/gemini-2.5-flash-preview-09-2025';
 
 function parseError(error: string) {
   if (!error) return 'An unexpected error occurred.';
-  const regex = /{"error":(.*)}/gm;
-  const m = regex.exec(error);
+
   try {
-    const e = m[1];
-    const err = JSON.parse(e);
-    return err.message || error;
+    const parsed = JSON.parse(error);
+    if (parsed?.error?.message) return parsed.error.message;
+    if (parsed?.message) return parsed.message;
   } catch (e) {
-    return error;
+    // Ignore JSON parse errors and fall back to regex or raw string
   }
+
+  const regex = /{"error":(.*)}/gm;
+  const match = regex.exec(error);
+
+  if (match && match[1]) {
+    try {
+      const err = JSON.parse(match[1]);
+      if (err?.message) return err.message;
+    } catch (e) {
+      return match[1];
+    }
+  }
+
+  return error;
 }
 
 const styles = [
@@ -310,24 +323,54 @@ export default function Home() {
 
       const drawingData = tempCanvas.toDataURL('image/png').split(',')[1];
 
-      console.log('Sending prompt and image to Gemini...');
+      console.log('Sending prompt and image to OpenRouter...');
 
-      const contents = [
-        {
-          parts: [
-            {inlineData: {data: drawingData, mimeType: 'image/png'}},
-            {text: `${prompt}. Generate the image in a ${style} style.`},
-          ],
-        },
-      ];
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
 
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image-preview',
-        contents,
-        config: {
-          responseModalities: [Modality.TEXT, Modality.IMAGE],
+      if (!apiKey) {
+        throw new Error(
+          'Missing OpenRouter API key. Set VITE_OPENROUTER_API_KEY in your environment.',
+        );
+      }
+
+      const requestPayload = {
+        model: OPENROUTER_MODEL,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: `${prompt}. Generate the image in a ${style} style.`,
+              },
+              {
+                type: 'input_image',
+                image_base64: drawingData,
+                mime_type: 'image/png',
+              },
+            ],
+          },
+        ],
+      };
+
+      const response = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          'HTTP-Referer':
+            typeof window !== 'undefined' ? window.location.origin : '',
+          'X-Title': 'Co-Drawing',
         },
+        body: JSON.stringify(requestPayload),
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(parseError(errorText));
+      }
+
+      const result = await response.json();
 
       const data = {
         success: false,
@@ -336,31 +379,69 @@ export default function Home() {
         error: 'Failed to generate image. No content returned from the model.',
       };
 
-      if (response.candidates && response.candidates.length > 0) {
-        const candidate = response.candidates[0];
-        if (candidate.content && candidate.content.parts) {
-          data.success = true;
-          data.error = undefined; // clear default error
+      const collectParts = (payload) => {
+        if (!payload) return [];
+        const parts = [];
 
-          for (const part of candidate.content.parts) {
-            // Based on the part type, either get the text or image data
+        const addContent = (content) => {
+          if (!content) return;
+          if (Array.isArray(content)) {
+            parts.push(...content);
+          } else {
+            parts.push(content);
+          }
+        };
+
+        if (Array.isArray(payload.data)) {
+          payload.data.forEach((item) => addContent(item?.content));
+        }
+
+        if (Array.isArray(payload.choices)) {
+          payload.choices.forEach((choice) => {
+            addContent(choice?.message?.content || choice?.delta?.content);
+          });
+        }
+
+        if (payload?.message?.content) {
+          addContent(payload.message.content);
+        }
+
+        return parts;
+      };
+
+      const parts = collectParts(result);
+
+      if (parts.length > 0) {
+        data.success = true;
+        data.error = undefined;
+
+        parts.forEach((part) => {
+          if (!part) return;
+          if (part.type === 'output_text' || part.type === 'text') {
+            data.message = part.text || data.message;
             if (part.text) {
-              data.message = part.text;
               console.log('Received text response:', part.text);
-            } else if (part.inlineData) {
-              const imageData = part.inlineData.data;
-              console.log(
-                'Received image data, length:',
-                imageData.length,
-              );
-              data.imageData = imageData;
             }
           }
-        }
-      } else if (response.promptFeedback) {
-        data.error = `Image generation failed: ${
-          response.promptFeedback.blockReason
-        } ${response.promptFeedback.blockReasonMessage || ''}`;
+
+          const imageData =
+            part.image_base64 ||
+            part.image_base64_json ||
+            part.b64_json ||
+            part.data;
+          if (part.type === 'output_image' || imageData) {
+            if (typeof imageData === 'string') {
+              const sanitizedImage = imageData.includes(',')
+                ? imageData.split(',').pop()
+                : imageData;
+              console.log(
+                'Received image data, length:',
+                sanitizedImage?.length || 0,
+              );
+              data.imageData = sanitizedImage;
+            }
+          }
+        });
       }
 
       // Log the response (without the full image data for brevity)
@@ -435,13 +516,13 @@ export default function Home() {
                 Co-Drawing
               </h1>
               <p className="text-sm sm:text-base text-gray-500 mt-1">
-                Built with{' '}
+                Powered by{' '}
                 <a
                   className="underline"
-                  href="https://ai.google.dev/gemini-api/docs/image-generation"
+                  href="https://openrouter.ai/models/google/gemini-2.5-flash-preview-09-2025"
                   target="_blank"
                   rel="noopener noreferrer">
-                  native image generation
+                  OpenRouter's Gemini 2.5 Flash Preview
                 </a>
               </p>
               <p className="text-sm sm:text-base text-gray-500 mt-1">
