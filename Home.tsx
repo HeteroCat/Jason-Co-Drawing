@@ -13,8 +13,8 @@ import {
 } from 'lucide-react';
 import {useEffect, useRef, useState} from 'react';
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/responses';
-const OPENROUTER_MODEL = 'google/gemini-2.5-flash-preview-09-2025';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_MODEL = 'google/gemini-2.5-flash-image-preview';
 
 function parseError(error: string) {
   if (!error) return 'An unexpected error occurred.';
@@ -340,27 +340,31 @@ export default function Home() {
             role: 'user',
             content: [
               {
-                type: 'input_text',
+                type: 'text',
                 text: `${prompt}. Generate the image in a ${style} style.`,
               },
               {
-                type: 'input_image',
-                image_base64: drawingData,
-                mime_type: 'image/png',
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${drawingData}`,
+                },
               },
             ],
           },
         ],
+        modalities: ['image', 'text'], // Required for image generation
       };
 
+      // Add CORS mode and credentials
       const response = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
+        mode: 'cors',
+        credentials: 'omit',
         headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer':
-            typeof window !== 'undefined' ? window.location.origin : '',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
           'X-Title': 'Co-Drawing',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestPayload),
       });
@@ -371,6 +375,9 @@ export default function Home() {
       }
 
       const result = await response.json();
+      
+      // Log the full API response for debugging
+      console.log('Full API Response:', JSON.stringify(result, null, 2));
 
       const data = {
         success: false,
@@ -383,27 +390,45 @@ export default function Home() {
         if (!payload) return [];
         const parts = [];
 
-        const addContent = (content) => {
-          if (!content) return;
-          if (Array.isArray(content)) {
-            parts.push(...content);
-          } else {
-            parts.push(content);
-          }
-        };
-
-        if (Array.isArray(payload.data)) {
-          payload.data.forEach((item) => addContent(item?.content));
-        }
-
+        // Handle OpenAI Chat API response format for image generation
         if (Array.isArray(payload.choices)) {
           payload.choices.forEach((choice) => {
-            addContent(choice?.message?.content || choice?.delta?.content);
+            const message = choice?.message;
+            if (message) {
+              // Handle text content
+              if (message.content && typeof message.content === 'string') {
+                parts.push({ type: 'text', text: message.content });
+              }
+              
+              // Handle images array (for image generation models)
+              if (Array.isArray(message.images)) {
+                message.images.forEach((image) => {
+                  if (image.type === 'image_url' && image.image_url?.url) {
+                    const url = image.image_url.url;
+                    if (url.startsWith('data:image/')) {
+                      const base64Data = url.split(',')[1];
+                      parts.push({ type: 'output_image', imageData: base64Data });
+                    }
+                  }
+                });
+              }
+              
+              // Handle array content (mixed content types)
+              if (Array.isArray(message.content)) {
+                message.content.forEach((part) => {
+                  if (part.type === 'text') {
+                    parts.push({ type: 'text', text: part.text });
+                  } else if (part.type === 'image_url' && part.image_url?.url) {
+                    const url = part.image_url.url;
+                    if (url.startsWith('data:image/')) {
+                      const base64Data = url.split(',')[1];
+                      parts.push({ type: 'output_image', imageData: base64Data });
+                    }
+                  }
+                });
+              }
+            }
           });
-        }
-
-        if (payload?.message?.content) {
-          addContent(payload.message.content);
         }
 
         return parts;
@@ -417,29 +442,19 @@ export default function Home() {
 
         parts.forEach((part) => {
           if (!part) return;
-          if (part.type === 'output_text' || part.type === 'text') {
+          if (part.type === 'text') {
             data.message = part.text || data.message;
             if (part.text) {
               console.log('Received text response:', part.text);
             }
           }
 
-          const imageData =
-            part.image_base64 ||
-            part.image_base64_json ||
-            part.b64_json ||
-            part.data;
-          if (part.type === 'output_image' || imageData) {
-            if (typeof imageData === 'string') {
-              const sanitizedImage = imageData.includes(',')
-                ? imageData.split(',').pop()
-                : imageData;
-              console.log(
-                'Received image data, length:',
-                sanitizedImage?.length || 0,
-              );
-              data.imageData = sanitizedImage;
-            }
+          if (part.type === 'output_image' && part.imageData) {
+            console.log(
+              'Received image data, length:',
+              part.imageData?.length || 0,
+            );
+            data.imageData = part.imageData;
           }
         });
       }
