@@ -11,6 +11,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { ImageUp } from 'lucide-react';
 import {useEffect, useRef, useState} from 'react';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -57,6 +58,7 @@ export default function Home() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [penColor, setPenColor] = useState('#000000');
   const colorInputRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [prompt, setPrompt] = useState('');
   const [generatedImage, setGeneratedImage] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -215,6 +217,30 @@ export default function Home() {
 
     setGeneratedImage(null);
     backgroundImageRef.current = null;
+  };
+
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleUploadChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      backgroundImageRef.current = img;
+      drawImageToCanvas();
+      URL.revokeObjectURL(objectUrl);
+      // Reset input so selecting the same file again re-triggers change
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    };
+    img.src = objectUrl;
   };
 
   const handleColorChange = (e) => {
@@ -638,14 +664,32 @@ export default function Home() {
           {/* Input form that matches canvas width */}
           <form onSubmit={handleSubmit} className="w-full">
             <div className="relative">
+              {/* Hidden file input for image upload */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleUploadChange}
+                className="hidden"
+                aria-label="Upload background image"
+              />
               <input
                 type="text"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Add your change..."
-                className="w-full p-3 sm:p-4 pr-12 sm:pr-14 text-sm sm:text-base border-2 border-black bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-200 focus:outline-none transition-all font-mono"
+                className="w-full p-3 sm:p-4 pl-12 sm:pl-14 pr-12 sm:pr-14 text-sm sm:text-base border-2 border-black bg-white text-gray-800 shadow-sm focus:ring-2 focus:ring-gray-200 focus:outline-none transition-all font-mono"
                 required
               />
+              {/* Upload image button on the left side of the input */}
+              <button
+                type="button"
+                onClick={handleUploadClick}
+                className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 rounded-none bg-black text-white hover:cursor-pointer hover:bg-gray-800 transition-colors"
+                aria-label="Upload image"
+              >
+                <ImageUp className="w-5 sm:w-6 h-5 sm:h-6" />
+              </button>
               <button
                 type="submit"
                 disabled={isLoading}
