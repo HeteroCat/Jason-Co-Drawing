@@ -12,10 +12,10 @@ import {
   X,
 } from 'lucide-react';
 import { ImageUp } from 'lucide-react';
-import {useEffect, useRef, useState} from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'google/gemini-2.5-flash-image-preview';
+const OPENROUTER_MODEL = 'google/gemini-3-pro-image-preview';
 
 function parseError(error: string) {
   if (!error) return 'An unexpected error occurred.';
@@ -171,7 +171,7 @@ export default function Home() {
   const startDrawing = (e) => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const {x, y} = getCoordinates(e);
+    const { x, y } = getCoordinates(e);
 
     // Prevent default behavior to avoid scrolling on touch devices
     if (e.type === 'touchstart') {
@@ -194,7 +194,7 @@ export default function Home() {
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const {x, y} = getCoordinates(e);
+    const { x, y } = getCoordinates(e);
 
     ctx.lineWidth = 5;
     ctx.lineCap = 'round';
@@ -401,7 +401,7 @@ export default function Home() {
       }
 
       const result = await response.json();
-      
+
       // Log the full API response for debugging
       console.log('Full API Response:', JSON.stringify(result, null, 2));
 
@@ -425,7 +425,7 @@ export default function Home() {
               if (message.content && typeof message.content === 'string') {
                 parts.push({ type: 'text', text: message.content });
               }
-              
+
               // Handle images array (for image generation models)
               if (Array.isArray(message.images)) {
                 message.images.forEach((image) => {
@@ -438,7 +438,7 @@ export default function Home() {
                   }
                 });
               }
-              
+
               // Handle array content (mixed content types)
               if (Array.isArray(message.content)) {
                 message.content.forEach((part) => {
@@ -563,7 +563,7 @@ export default function Home() {
                   href="https://openrouter.ai/models/google/gemini-2.5-flash-preview-09-2025"
                   target="_blank"
                   rel="noopener noreferrer">
-                  OpenRouter's Gemini 2.5 Flash Preview
+                  Google/gemini-3-pro-image-preview
                 </a>
               </p>
               <p className="text-sm sm:text-base text-gray-500 mt-1">
@@ -573,7 +573,7 @@ export default function Home() {
                   href="https://x.com/jasonhuang"
                   target="_blank"
                   rel="noopener noreferrer">
-                  @jasonhuang
+                  Jasonhuang
                 </a>
               </p>
             </div>
@@ -612,7 +612,7 @@ export default function Home() {
                 onClick={openColorPicker}
                 onKeyDown={handleKeyDown}
                 aria-label="Open color picker"
-                style={{backgroundColor: penColor}}>
+                style={{ backgroundColor: penColor }}>
 
                 <input
                   ref={colorInputRef}
