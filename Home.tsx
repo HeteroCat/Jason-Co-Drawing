@@ -15,7 +15,7 @@ import { ImageUp } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'google/gemini-3-pro-image-preview';
+const OPENROUTER_MODEL = 'google/gemini-3.1-flash-image-preview';
 
 function parseError(error: string) {
   if (!error) return 'An unexpected error occurred.';
@@ -560,10 +560,10 @@ export default function Home() {
                 Powered by{' '}
                 <a
                   className="underline"
-                  href="https://openrouter.ai/models/google/gemini-2.5-flash-preview-09-2025"
+                  href="https://openrouter.ai/models/google/gemini-3.1-flash-image-preview"
                   target="_blank"
                   rel="noopener noreferrer">
-                  Google/gemini-3-pro-image-preview
+                  Google/gemini-3.1-flash-image-preview
                 </a>
               </p>
               <p className="text-sm sm:text-base text-gray-500 mt-1">
